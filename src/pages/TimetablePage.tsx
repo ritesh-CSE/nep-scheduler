@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { TimetableGrid, TimetableLegend } from '@/components/timetable/TimetableGrid';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sparkles, Trash2, AlertCircle, CheckCircle2, Calendar, BarChart3 } from 'lucide-react';
+import { Sparkles, Trash2, AlertCircle, CheckCircle2, Calendar, BarChart3, Download } from 'lucide-react';
 import { useCourses, useFaculty, useRooms, useFacultyAvailability, useFacultyCourses, useTimetableSlots, useSaveTimetable, useClearTimetable } from '@/hooks/useData';
 import { generateTimetable, type SchedulerResult } from '@/lib/scheduler';
 import { toast } from 'sonner';
@@ -16,6 +16,8 @@ const TimetablePage = () => {
   const [semester, setSemester] = useState(1);
   const [generationResult, setGenerationResult] = useState<SchedulerResult | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const timetableRef = useRef<HTMLDivElement>(null);
 
   const { data: courses = [] } = useCourses();
   const { data: faculty = [] } = useFaculty();
@@ -28,8 +30,6 @@ const TimetablePage = () => {
 
   const handleGenerate = () => {
     setIsGenerating(true);
-    
-    // Simulate processing time for visual feedback
     setTimeout(() => {
       const result = generateTimetable({
         courses,
@@ -70,6 +70,63 @@ const TimetablePage = () => {
   const handleClear = () => {
     clearTimetable.mutate({ academicYear, semester });
     setGenerationResult(null);
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!timetableRef.current) return;
+    setIsExporting(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+
+      const element = timetableRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+
+      // Use landscape A3 for wider timetable
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a3',
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const availableWidth = pdfWidth - margin * 2;
+      const availableHeight = pdfHeight - margin * 2 - 20; // extra for title
+
+      // Title
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`NEP 2020 Timetable - Semester ${semester} | ${academicYear}`, margin, margin + 8);
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Generated on ${new Date().toLocaleDateString()}`, margin, margin + 14);
+
+      // Scale image to fit
+      const ratio = Math.min(availableWidth / imgWidth, availableHeight / imgHeight);
+      const scaledWidth = imgWidth * ratio;
+      const scaledHeight = imgHeight * ratio;
+
+      pdf.addImage(imgData, 'PNG', margin, margin + 20, scaledWidth, scaledHeight);
+
+      pdf.save(`Timetable_Sem${semester}_${academicYear}.pdf`);
+      toast.success('Timetable downloaded as PDF!');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to export PDF. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   // Enrich generated slots with joined data for display
@@ -130,6 +187,17 @@ const TimetablePage = () => {
 
         <div className="flex-1" />
 
+        {(displaySlots as any[]).length > 0 && (
+          <Button
+            variant="outline"
+            onClick={handleDownloadPDF}
+            disabled={isExporting}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {isExporting ? 'Exporting...' : 'Download PDF'}
+          </Button>
+        )}
+
         <Button
           onClick={handleGenerate}
           disabled={isGenerating || !isReady}
@@ -146,7 +214,7 @@ const TimetablePage = () => {
           </Button>
         )}
 
-        {(displaySlots.length > 0 || timetableSlots.length > 0) && (
+        {(displaySlots as any[]).length > 0 && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="outline" className="text-destructive">
@@ -259,7 +327,7 @@ const TimetablePage = () => {
       <TimetableLegend />
 
       {/* Timetable Grid */}
-      <div className="mt-4">
+      <div className="mt-4" ref={timetableRef}>
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
