@@ -155,7 +155,7 @@ export function generateTimetable(input: SchedulerInput): SchedulerResult {
     const hoursNeeded = course.hours_per_week;
 
     // Try each day, distributing load
-    const dayOrder = [0, 2, 4, 1, 3]; // Mon, Wed, Fri, Tue, Thu for even distribution
+    const dayOrder = [0, 2, 4, 1, 3, 5]; // Mon, Wed, Fri, Tue, Thu, Sat for even distribution
 
     for (const day of dayOrder) {
       if (hoursScheduled >= hoursNeeded) break;
@@ -236,7 +236,7 @@ export function generateTimetable(input: SchedulerInput): SchedulerResult {
   }));
 
   // Calculate statistics
-  const totalRoomSlots = rooms.length * 5 * 9; // rooms * days * hours
+  const totalRoomSlots = rooms.length * 6 * 9; // rooms * days * hours
   const usedRoomSlots = new Set(assignments.map(a => `${a.room.id}-${a.slot.day}-${a.slot.hour}`)).size;
   
   const facultyLoads = Array.from(facultyHours.values()).filter(h => h > 0);
