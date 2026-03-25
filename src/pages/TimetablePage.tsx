@@ -72,7 +72,17 @@ const TimetablePage = () => {
     setGenerationResult(null);
   };
 
-  const displaySlots = generationResult?.slots || timetableSlots;
+  // Enrich generated slots with joined data for display
+  const enrichedGeneratedSlots = generationResult?.slots.map((slot, index) => ({
+    ...slot,
+    id: `generated-${index}`,
+    created_at: new Date().toISOString(),
+    course: courses.find(c => c.id === slot.course_id),
+    faculty: faculty.find(f => f.id === slot.faculty_id),
+    room: rooms.find(r => r.id === slot.room_id),
+  })) || null;
+
+  const displaySlots = enrichedGeneratedSlots || timetableSlots;
   const hasUnsavedChanges = generationResult !== null;
 
   // Check readiness
@@ -257,7 +267,7 @@ const TimetablePage = () => {
               <p className="text-muted-foreground">Loading timetable...</p>
             </div>
           </div>
-        ) : displaySlots.length === 0 ? (
+        ) : (displaySlots as any[]).length === 0 ? (
           <div className="flex items-center justify-center py-12 border-2 border-dashed rounded-xl">
             <div className="text-center">
               <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-2" />
