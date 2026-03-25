@@ -104,7 +104,7 @@ export interface TimetableSlot {
 }
 
 // Day names for display
-export const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as const;
+export const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
 // Time slots for timetable (8 AM to 5 PM)
 export const TIME_SLOTS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17] as const;
